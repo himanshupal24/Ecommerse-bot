@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio to Text</title>
+</head>
+<body>
+    <h1>Audio to Text</h1>
+    <button id="startRecording">Start Recording</button>
+    <button id="stopRecording">Stop Recording</button>
+    <div id="transcription"></div>
+
+    <script>
+        const startRecordingButton = document.getElementById('startRecording');
+        const stopRecordingButton = document.getElementById('stopRecording');
+        const transcriptionDiv = document.getElementById('transcription');
+        let audioChunks = [];
+
+        // Request access to the user's microphone
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(function(stream) {
+                const mediaRecorder = new MediaRecorder(stream);
+
+                startRecordingButton.onclick = function() {
+                    mediaRecorder.start();
+                    console.log('Recording started');
+                }
+
+                stopRecordingButton.onclick = function() {
+                    mediaRecorder.stop();
+                    console.log('Recording stopped');
+                }
+
+                mediaRecorder.ondataavailable = function(event) {
+                    audioChunks.push(event.data);
+                }
+
+                mediaRecorder.onstop = function() {
+                    const audioBlob = new Blob(audioChunks);
+                    const formData = new FormData();
+                    formData.append('audio', audioBlob, 'recording.wav');
+
+                    fetch('http://127.0.0.1:5050/process_audio', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        transcriptionDiv.textContent = 'Transcription: ' + data.transcription;
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                    });
+
+                    audioChunks = [];
+                }
+            })
+            .catch(function(error) {
+                console.error('Error accessing microphone:', error);
+            });
+    </script>
+</body>
+</html>
